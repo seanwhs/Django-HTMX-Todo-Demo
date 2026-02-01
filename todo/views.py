@@ -31,6 +31,7 @@ def add_todo(request):
     context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
     return render(request, "todo/partials/todo.html", context)
 
+<<<<<<< HEAD
 @require_http_methods(["GET"])
 def edit_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
@@ -47,6 +48,12 @@ def update_todo(request, pk):
         # Otherwise, it was the checkbox/toggle click
         todo.is_done = not todo.is_done
         
+=======
+@require_http_methods(["PUT"])
+def update_todo(request, pk):
+    todo = get_object_or_404(Todo, pk=pk)
+    todo.is_done = not todo.is_done
+>>>>>>> c83c870c047efd2aea2cd4695e1b2329aee8ff58
     todo.save()
     
     context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
