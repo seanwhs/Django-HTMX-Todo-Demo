@@ -1,0 +1,89 @@
+<!-- todo/templates/todo/todos.html (FIXED - Django template safe) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind Todo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        .htmx-swapping { opacity: 0; transition: opacity 0.3s ease-out; }
+        /* Simple logic to hide the 'No tasks' message if the todos section has content */
+        #todos:not(:empty) + #no-todos-msg { display: none; }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-cyan-400 to-blue-500 font-sans">
+    <nav class="px-4 py-6 bg-cyan-600 shadow-lg">
+        <div class="max-w-4xl mx-auto">
+            <span class="text-2xl font-bold text-white tracking-tight">Tailwind Todo</span>
+        </div>
+    </nav>
+
+    <main class="w-full max-w-4xl mx-auto my-8 px-4 lg:px-10 py-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl">
+        
+        <form hx-post="{% url 'add_todo' %}" 
+              hx-target="#todos" 
+              hx-swap="afterbegin" 
+              hx-on::after-request="if(event.detail.successful) this.reset()" 
+              class="flex mb-4 space-x-4">
+            {% csrf_token %}
+            <input type="text" name="title" placeholder="What needs to be done?" required
+                   class="flex-1 px-6 py-4 text-lg bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-cyan-400 outline-none transition-all">
+            <button type="submit" class="px-8 py-4 text-lg font-bold text-white bg-cyan-500 rounded-2xl hover:bg-cyan-600 shadow-lg transition-all">
+                Add
+            </button>
+        </form>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 px-2 gap-4">
+            <button hx-post="{% url 'toggle_all' %}" 
+                    hx-target="#todos" 
+                    hx-swap="outerHTML"
+                    class="group text-gray-500 hover:text-cyan-600 flex items-center text-sm font-semibold transition-colors">
+                <span class="mr-2 opacity-50 group-hover:opacity-100">✔️</span> 
+                Mark all as done
+            </button>
+            
+            <div class="flex bg-gray-200/50 p-1 rounded-xl space-x-1">
+                <button hx-get="{% url 'todos' %}" hx-target="#todos"
+                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'all' or not filter_type %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
+                    All
+                </button>
+                
+                <button hx-get="{% url 'filter_todos' 'active' %}" hx-target="#todos"
+                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'active' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
+                    Active
+                </button>
+                
+                <button hx-get="{% url 'filter_todos' 'completed' %}" hx-target="#todos"
+                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'completed' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
+                    Completed
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {% include "todo/partials/list.html" %}
+
+            <footer class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center text-sm">
+                {% include "todo/partials/counter.html" %}
+
+                <button hx-post="{% url 'clear_completed' %}" 
+                        hx-target="#todos" 
+                        hx-swap="outerHTML"
+                        hx-confirm="Clear all finished tasks?"
+                        class="text-gray-400 hover:text-red-500 transition-colors font-bold uppercase tracking-wider text-[10px]">
+                    Clear Completed
+                </button>
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        document.body.addEventListener('htmx:configRequest', (e) => {
+            e.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
+</body>
+</html>
