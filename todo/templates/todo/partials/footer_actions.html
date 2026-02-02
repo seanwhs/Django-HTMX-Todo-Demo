@@ -1,0 +1,17 @@
+<!-- todo/templates/todo/partials/footer_actions.html -->
+<div id="footer-actions" hx-swap-oob="true" class="flex items-center space-x-4">
+    {% if filter_type == 'deleted' %}
+    <button hx-post="{% url 'empty_trash' %}" 
+            hx-target="#todos" 
+            hx-confirm="Are you absolutely sure? This will permanently delete all trashed items."
+            class="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-widest transition-all">
+        Empty Trash
+    </button>
+    {% endif %}
+
+    <button hx-post="{% url 'clear_completed' %}" hx-target="#todos" hx-swap="innerHTML"
+        hx-include="[name='q']"
+        class="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">
+        Clear Completed
+    </button>
+</div>

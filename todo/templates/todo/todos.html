@@ -108,11 +108,14 @@
 
             <footer class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t border-gray-100">
                 {% include "todo/partials/counter.html" %}
-                <button hx-post="{% url 'clear_completed' %}" hx-target="#todos" hx-swap="innerHTML"
-                    hx-include="[name='q']"
-                    class="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">
-                    Clear Completed
-                </button>
+
+                <div id="footer-actions" class="flex items-center space-x-4">
+                    <button hx-post="{% url 'clear_completed' %}" hx-target="#todos" hx-swap="innerHTML"
+                        hx-include="[name='q']"
+                        class="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">
+                        Clear Completed
+                    </button>
+                </div>
             </footer>
         </div>
     </main>

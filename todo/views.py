@@ -32,14 +32,19 @@ def get_todo_context(filter_type="all", query=""):
 
 
 def todos(request, filter_type="all"):
-    query = request.GET.get("q", "")  # Get the search parameter
+    query = request.GET.get("q", "")
     context = get_todo_context(filter_type, query)
-    template = (
-        "todo/partials/list.html"
-        if request.headers.get("HX-Request")
-        else "todo/todos.html"
-    )
-    return render(request, template, context)
+    
+    if request.headers.get("HX-Request"):
+        # Render the list as the main response
+        list_html = render_to_string("todo/partials/list.html", context, request=request)
+        
+        # Render the footer actions as an OOB swap
+        footer_html = render_to_string("todo/partials/footer_actions.html", context, request=request)
+        
+        return HttpResponse(list_html + footer_html)
+    
+    return render(request, "todo/todos.html", context)
 
 
 @require_http_methods(["POST"])
@@ -174,6 +179,25 @@ def delete_permanent(request, pk):
     )
     return HttpResponse("" + toast_html)
 
+@require_http_methods(["POST"])
+def empty_trash(request):
+    # 1. Purge the records
+    deleted_items = Todo.objects.filter(is_deleted=True)
+    count = deleted_items.count()
+    deleted_items.delete()
+    
+    # 2. Prepare the response for the "deleted" view
+    # This ensures the "No tasks found!" message appears immediately
+    context = get_todo_context(filter_type="deleted")
+    list_html = render_to_string("todo/partials/list.html", context, request=request)
+    
+    toast_html = render_to_string(
+        "todo/partials/toast.html", 
+        {"message": f"Purged {count} items from trash"}, 
+        request=request
+    )
+    
+    return HttpResponse(list_html + toast_html)
 
 @require_http_methods(["POST"])
 def toggle_all(request):
@@ -194,7 +218,6 @@ def toggle_all(request):
 
     # Return both together
     return HttpResponse(list_html + counter_html)
-
 
 @require_http_methods(["POST"])
 def clear_completed(request):

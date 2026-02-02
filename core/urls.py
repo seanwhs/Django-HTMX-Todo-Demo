@@ -16,4 +16,5 @@ urlpatterns = [
     path('clear-completed/', views.clear_completed, name='clear_completed'),
     path('undo-clear/<str:batch_id>/', views.undo_clear, name='undo_clear'),
     path('delete-permanent/<int:pk>/', views.delete_permanent, name='delete_permanent'),
+    path('empty-trash/', views.empty_trash, name='empty_trash'),
 ]
