@@ -351,11 +351,16 @@ The UI reacts.
 
 ```mermaid
 sequenceDiagram
+    participant User
+    participant Browser
+    participant Django
+    participant Todos as #todos (DOM)
+
     User->>Django: POST /add-todo/
     Django->>Browser: HX-Trigger: todoUpdated
-    Browser->>Browser: dispatch todoUpdated
-    #todos->>Django: hx-get /todos/?q=
-    Django->>#todos: fresh list HTML
+    Browser->>Browser: dispatch "todoUpdated"
+    Todos->>Django: hx-get /todos/?q=
+    Django->>Todos: fresh list HTML
 ```
 
 ---
@@ -391,10 +396,15 @@ No sync bugs.
 
 ```mermaid
 sequenceDiagram
+    participant User
+    participant Django
+    participant Row as #todo-5 (DOM)
+
     User->>Django: hx-get /edit-todo/5/
-    Django->>#todo-5: edit form
+    Django->>Row: edit form HTML
     User->>Django: hx-post /update-todo/5/
-    Django->>#todo-5: updated row
+    Django->>Row: updated row HTML
+
 ```
 
 ---
