@@ -2,8 +2,11 @@
 
 ## A Full Architectural & Code Walkthrough
 
+### *No JSON. No reducers. No hydration. No cache invalidation bugs.*
 
-## Core Philosophy 
+---
+
+## Core Philosophy (Read This First)
 
 This is **not** a frontend + backend split application.
 
@@ -12,16 +15,22 @@ This is **not** a frontend + backend split application.
 > **HTMX is the transport layer**
 
 There is **no frontend state** worth naming.
-The **server owns truth**. The browser renders **projections of that truth**.
+The **server owns truth**.
+The browser renders **projections of that truth**.
 
 No JSON.
 No reducers.
 No hydration.
 No cache invalidation bugs.
 
+This is not about nostalgia.
+It’s about **one source of truth and one execution model**.
+
 ---
 
-## 🧭 High‑Level Mental Model
+## 🧭 High-Level Mental Model
+
+Every interaction follows the *same loop*:
 
 ```text
 User Intent
@@ -34,10 +43,14 @@ Database (single source of truth)
    ↓
 HTML Fragments
    ↓
-HTMX Swaps (DOM reconciliation)
+HTMX Swaps (DOM update)
 ```
 
-This loop repeats for **every interaction**.
+This loop repeats for **every action** — add, toggle, delete, clear, undo.
+
+No special cases.
+No client-side replays.
+No “syncing” required.
 
 ---
 
@@ -58,7 +71,7 @@ class Todo(models.Model):
     updated_at
 ```
 
-Everything else in the system is a **view over this truth**.
+Everything else in the system is just a **view over this truth**.
 
 ---
 
@@ -104,7 +117,9 @@ SOFT DELETE (this design)
 * Trash view
 * Undo delete
 * Batch restore
-* Safe UX (nothing irreversible by default)
+* Safe UX by default
+
+Nothing irreversible unless you explicitly ask for it.
 
 ---
 
@@ -121,7 +136,7 @@ Undo Clear
 └── WHERE note=batch_1700000000 → restore all
 ```
 
-This is **event‑sourcing lite**, implemented with one column.
+This is **event-sourcing lite**, implemented with one column.
 
 ---
 
@@ -187,7 +202,7 @@ graph LR
 
 ### Mental Model: “One brain, many limbs”
 
-Every list render — **no matter why it happens** — goes through this function.
+Every list render — **no matter why it happens** — goes through **one function**.
 
 ```python
 def get_todo_context(filter_type="all", query=""):
@@ -245,7 +260,7 @@ graph TD
 
 ---
 
-## 🧠 4. Dual‑Purpose View — `todos()`
+## 🧠 4. Dual-Purpose View — `todos()`
 
 ### Mental Model: “Same brain, two faces”
 
@@ -273,26 +288,26 @@ sequenceDiagram
     Django->>Browser: HTML fragments only
 ```
 
-This eliminates separate APIs, routing, and hydration.
+No separate APIs.
+No duplication.
+No hydration.
 
 ---
 
-## ⚡ 5. HTMX Patterns (The Magic)
+## ⚡ 5. HTMX Patterns — HTML Diffs Over the Wire
 
-### 🧠 Mental Model: “HTML diffs over the wire”
+### 🧠 Mental Model
 
 HTMX **never updates state**.
 It updates **DOM projections of server state**.
 
 ---
 
-### A. Out‑of‑Band (OOB) Swaps
+### A. Out-of-Band (OOB) Swaps
 
 ```html
 <span id="todo-count" hx-swap-oob="true">
 ```
-
-> This fragment knows where it belongs.
 
 HTMX scans the response and patches the DOM **globally**.
 
@@ -308,7 +323,9 @@ graph TD
     Response -->|oob| #toast-container
 ```
 
-One response. Multiple updates. No JS glue.
+One response.
+Multiple updates.
+No JS glue.
 
 ---
 
@@ -325,7 +342,8 @@ response["HX-Trigger"] = "todoUpdated"
      hx-include="[name='q']">
 ```
 
-The **server emits events**. The UI reacts.
+The **server emits events**.
+The UI reacts.
 
 ---
 
@@ -342,7 +360,7 @@ sequenceDiagram
 
 ---
 
-## 🖼️ 6. Templates as Server‑Side Components
+## 🖼️ 6. Templates as Server-Side Components
 
 ### Mental Model: “Fragments, not pages”
 
@@ -357,13 +375,15 @@ sequenceDiagram
 
 ---
 
-### In‑Place Editing Pattern
+### In-Place Editing Pattern
 
 ```text
 Row → Edit Form → Row
 ```
 
-No modals. No JS state. No sync bugs.
+No modals.
+No JS state.
+No sync bugs.
 
 ---
 
@@ -381,7 +401,7 @@ sequenceDiagram
 
 ## 🔁 7. Action Views as Transactions
 
-### Mental Model: “Each view = one transaction”
+### Mental Model
 
 ```text
 1. Validate intent
@@ -414,37 +434,91 @@ sequenceDiagram
 
 ---
 
-## 🧠 8. Why This Architecture Works
+## 💧 8. Hydration — What It Is and Why You Avoid It
 
-```text
-Server owns:
-- State
-- Sorting
-- Filtering
-- Validation
-- Events
+### What Hydration Means
 
-Client owns:
-- Rendering
-- Transitions
-- User input
-```
+**Hydration** is used by SPA frameworks (React, Vue, Next.js, etc.):
 
-No duplicated logic. No stale caches. No race conditions.
+1. Server sends HTML
+2. Browser renders it
+3. JavaScript loads
+4. JS rebuilds application state
+5. Event handlers attach to existing DOM
+
+> Turning static HTML into a live app.
 
 ---
 
-### Mermaid — Responsibility Split
+### Why Hydration Is Fragile
+
+Hydration assumes:
+
+> **Server HTML === Client render**
+
+Mismatch causes:
+
+* Flicker
+* Double renders
+* Dead buttons
+* Production-only bugs
+
+---
+
+### Mermaid — Hydration Failure
 
 ```mermaid
-graph LR
-    Django[Server<br/>Brain] -->|HTML| Browser
-    Browser -->|Intent| Django
+sequenceDiagram
+    Server->>Browser: HTML (state A)
+    Browser->>JS: Load bundle
+    JS->>JS: Compute state B
+    JS-->>Browser: ❌ mismatch
 ```
 
 ---
 
-## ✅ Final Mental Model (Commit This)
+### Why Django + HTMX Has No Hydration
+
+```text
+Server sends HTML
+Browser renders it
+User interacts
+Browser sends intent
+Server sends NEW HTML
+HTMX swaps it
+```
+
+HTML is **already live**.
+
+---
+
+## 🔄 React vs HTMX — Lifecycle Comparison
+
+### React / SPA
+
+```mermaid
+sequenceDiagram
+    User->>Server: Request
+    Server->>Browser: HTML + JS
+    Browser->>JS: Hydrate
+    User->>JS: Interaction
+    JS->>Server: JSON
+    JS->>DOM: Reconcile
+```
+
+### Django + HTMX
+
+```mermaid
+sequenceDiagram
+    User->>Browser: Interaction
+    Browser->>Server: hx intent
+    Server->>Browser: HTML fragment
+    Browser->>DOM: Swap
+```
+
+---
+
+## 🧠 Final Mental Model (Commit This)
 
 ```text
 Database = Truth
@@ -453,4 +527,13 @@ Templates = Projections
 HTMX      = Transport
 Events    = Glue
 ```
+
+---
+
+## Final One-Liner (Architecture Truth)
+
+> **Hydration is the tax you pay when both the server and the browser try to own the UI.**
+
+This architecture avoids the tax by having **one owner**.
+
 
