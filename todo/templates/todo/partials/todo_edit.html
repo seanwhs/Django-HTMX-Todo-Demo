@@ -5,14 +5,33 @@
           hx-swap="outerHTML" 
           class="flex-1 flex items-center">
         {% csrf_token %}
+        
         <input type="text" name="title" value="{{ todo.title }}" autofocus
-               class="w-full px-6 py-4 text-sm bg-transparent border-none focus:ring-0 outline-none"
+               class="w-full px-6 py-4 text-sm bg-transparent border-none focus:ring-0 outline-none font-medium"
                onfocus="this.select()"
                hx-on::after-request="if(event.detail.successful) this.blur()">
         
-        <div class="flex space-x-2 px-6">
-            <button type="submit" class="text-green-600 font-bold text-xs uppercase">Save</button>
-            <button hx-get="{% url 'todos' %}" hx-target="#todos" class="text-gray-400 text-xs uppercase">Cancel</button>
+        <div class="flex items-center space-x-4 px-6">
+            <div class="relative">
+                <select name="priority" 
+                        class="appearance-none bg-white/50 border border-cyan-200 rounded px-2 py-1 text-[10px] font-bold uppercase text-cyan-700 focus:ring-1 focus:ring-cyan-500 outline-none cursor-pointer">
+                    <option value="low" {% if todo.priority == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if todo.priority == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if todo.priority == 'high' %}selected{% endif %}>High</option>
+                </select>
+            </div>
+
+            <div class="flex space-x-2 border-l border-cyan-200 pl-4">
+                <button type="submit" class="text-green-600 font-black text-xs uppercase hover:text-green-700">
+                    Save
+                </button>
+                <button hx-get="{% url 'todos' %}" 
+                        hx-target="#todos" 
+                        type="button"
+                        class="text-gray-400 font-bold text-xs uppercase hover:text-gray-600">
+                    Cancel
+                </button>
+            </div>
         </div>
     </form>
 </article>

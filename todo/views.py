@@ -5,11 +5,11 @@ from django.views.decorators.http import require_http_methods
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.db import transaction
+from django.db.models import Case, Value, When, IntegerField
 from .models import Todo
 
-
 def get_todo_context(filter_type="all", query=""):
-    # If filter is 'deleted', show ONLY soft-deleted items. Otherwise, show non-deleted.
+    # 1. Basic Filtering
     if filter_type == "deleted":
         todos = Todo.objects.filter(is_deleted=True)
     else:
@@ -23,13 +23,24 @@ def get_todo_context(filter_type="all", query=""):
     elif filter_type == "completed":
         todos = todos.filter(is_done=True)
 
+    # 2. Add Custom Sorting Logic
+    # We assign: High=3, Medium=2, Low=1
+    todos = todos.annotate(
+        priority_order=Case(
+            When(priority='high', then=Value(3)),
+            When(priority='medium', then=Value(2)),
+            When(priority='low', then=Value(1)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by('-priority_order', '-created_at') # Highest number first, then newest
+
     return {
         "todos": todos,
         "count": Todo.objects.filter(is_deleted=False, is_done=False).count(),
         "filter_type": filter_type,
         "query": query,
     }
-
 
 def todos(request, filter_type="all"):
     query = request.GET.get("q", "")
@@ -50,7 +61,8 @@ def todos(request, filter_type="all"):
 @require_http_methods(["POST"])
 def add_todo(request):
     title = request.POST.get("title", "").strip()
-
+    priority = request.POST.get("priority", "medium") 
+    
     # 1. Validation Check
     error_msg = None
     if not title:
@@ -61,39 +73,38 @@ def add_todo(request):
         error_msg = "Task is too long (max 50 chars)."
 
     if error_msg:
-        # Return OOB fragment that unhides the error div
         return HttpResponse(
             f'<div id="todo-error" hx-swap-oob="true" class="text-red-500 text-xs font-bold px-1 block">{error_msg}</div>'
         )
 
     # 2. Success Logic
-    todo = Todo.objects.create(title=title)
-    context = {
-        "todo": todo,
-        "count": Todo.objects.filter(is_deleted=False, is_done=False).count(),
-    }
+    # We create the object, but we don't need to render its specific HTML here
+    # because the 'todoUpdated' trigger will refresh the whole list for us.
+    Todo.objects.create(title=title, priority=priority)
 
-    todo_html = render_to_string("todo/partials/todo.html", context, request=request)
+    # 3. Prepare Fragments
     toast_html = render_to_string(
         "todo/partials/toast.html", {"message": "Task added!"}, request=request
     )
-
-    # IMPORTANT: Include an empty OOB div to CLEAR previous errors on success
     clear_error_html = '<div id="todo-error" hx-swap-oob="true" class="hidden"></div>'
 
-    return HttpResponse(todo_html + toast_html + clear_error_html)
-
+    # 4. Create Response and attach Trigger
+    # We return an empty string for the main swap because the refresh handles the content
+    response = HttpResponse("" + toast_html + clear_error_html)
+    response["HX-Trigger"] = "todoUpdated" 
+    
+    return response
 
 @require_http_methods(["PUT", "POST"])
 def update_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
 
+    # 1. Handle the EDIT FORM submission (POST)
     if request.method == "POST" and "title" in request.POST:
         new_title = request.POST.get("title", "").strip()
+        new_priority = request.POST.get("priority", todo.priority)
 
-        # Inline Validation for editing
         if not new_title:
-            # Instead of a div, let's send a Toast error for inline edits!
             error_toast = render_to_string(
                 "todo/partials/toast.html",
                 {"message": "⚠️ Title cannot be empty!"},
@@ -102,12 +113,18 @@ def update_todo(request, pk):
             return HttpResponse(error_toast)
 
         todo.title = new_title
+        todo.priority = new_priority
+    
+    # 2. Handle the STATUS TOGGLE (The Checkbox/Title click)
     else:
         todo.is_done = not todo.is_done
+        # FIX: If we make a task active again, clear its "clear-completed" batch ID
+        if not todo.is_done:
+            todo.note = ""
 
     todo.save()
 
-    # ... (rest of your existing update_todo logic)
+    # 3. Prepare Response
     count = Todo.objects.filter(is_deleted=False, is_done=False).count()
     todo_html = render_to_string(
         "todo/partials/todo.html", {"todo": todo}, request=request
@@ -115,8 +132,12 @@ def update_todo(request, pk):
     counter_html = render_to_string(
         "todo/partials/counter.html", {"count": count}, request=request
     )
-    return HttpResponse(todo_html + counter_html)
-
+    
+    # 4. Return with Trigger
+    response = HttpResponse(todo_html + counter_html)
+    # FIX: This tells the frontend to refresh the whole list and apply sorting
+    response["HX-Trigger"] = "todoUpdated" 
+    return response
 
 @require_http_methods(["DELETE"])
 def delete_todo(request, pk):

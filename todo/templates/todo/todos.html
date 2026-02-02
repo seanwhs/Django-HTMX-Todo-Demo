@@ -52,6 +52,14 @@
                     <div class="flex gap-4">
                         <input type="text" name="title" placeholder="What needs to be done?"
                             class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none">
+
+                        <select name="priority"
+                            class="px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+
                         <button type="submit"
                             class="px-6 py-3 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition-all">Add</button>
                     </div>
@@ -102,7 +110,8 @@
             </div>
 
 
-            <div id="todos" class="divide-y divide-gray-100">
+            <div id="todos" class="divide-y divide-gray-100" hx-get="{% url 'todos' %}"
+                hx-trigger="todoUpdated from:body" hx-include="[name='q']">
                 {% include "todo/partials/list.html" %}
             </div>
 
@@ -117,6 +126,7 @@
                     </button>
                 </div>
             </footer>
+
         </div>
     </main>
 
