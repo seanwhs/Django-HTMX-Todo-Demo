@@ -1,11 +1,12 @@
 <!-- todo/templates/todo/partials/filters.html -->
 
-<div id="filters" hx-swap-oob="true" class="flex space-x-2">
+<div id="filters" hx-swap-oob="true" class="flex space-x-1">
     {% for type in "all,active,completed"|split:"," %}
     <button hx-get="{% url 'filter_todos' type %}" 
-            hx-target="#todos"
-            class="px-3 py-1 rounded-md text-xs font-medium transition-colors {% if filter_type == type %} bg-cyan-500 text-white {% else %} bg-gray-100 text-gray-600 hover:bg-gray-200 {% endif %}">
-        {{ type|title }}
+            hx-target="#todos" 
+            hx-include="[name='q']"
+            class="px-3 py-1 text-[10px] font-bold rounded-md {% if filter_type == type %}bg-cyan-600 text-white{% else %}text-gray-400 hover:bg-gray-200{% endif %}">
+        {{ type|upper }}
     </button>
     {% endfor %}
 </div>

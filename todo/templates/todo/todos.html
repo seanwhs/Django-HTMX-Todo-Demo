@@ -42,7 +42,7 @@
 </head>
 
 <body class="min-h-screen bg-gray-100 font-sans">
-    <main class="max-w-4xl mx-auto my-12 px-4">
+    <main class="max-w-4xl mx-auto my-6 px-4">
         <div class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
             <div class="p-6 border-b border-gray-100">
                 <form hx-post="{% url 'add_todo' %}" hx-target="#todos" hx-swap="afterbegin"
@@ -53,6 +53,26 @@
                     <button type="submit"
                         class="px-6 py-3 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 transition-all">Add</button>
                 </form>
+            </div>
+
+            <div class="px-6 py-2 bg-white border-b border-gray-100">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                    <input type="text" name="q" placeholder="Search tasks..." hx-get="{% url 'todos' %}"
+                        hx-trigger="keyup changed delay:500ms" hx-target="#todos" hx-indicator=".search-indicator"
+                        class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none text-sm">
+
+                    <span class="search-indicator htmx-indicator absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <div class="animate-spin h-4 w-4 border-2 border-cyan-500 border-t-transparent rounded-full">
+                        </div>
+                    </span>
+                </div>
             </div>
 
             <div class="px-6 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
@@ -72,6 +92,7 @@
                 </div>
             </div>
 
+
             <div id="todos" class="divide-y divide-gray-100">
                 {% include "todo/partials/list.html" %}
             </div>
@@ -79,6 +100,7 @@
             <footer class="px-6 py-4 bg-gray-50 flex justify-between items-center border-t border-gray-100">
                 {% include "todo/partials/counter.html" %}
                 <button hx-post="{% url 'clear_completed' %}" hx-target="#todos" hx-swap="innerHTML"
+                    hx-include="[name='q']"
                     class="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">
                     Clear Completed
                 </button>
