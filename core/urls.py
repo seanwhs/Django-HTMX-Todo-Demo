@@ -10,6 +10,7 @@ urlpatterns = [
     path('add-todo/', views.add_todo, name='add_todo'),
     path('update-todo/<int:pk>/', views.update_todo, name='update_todo'),
     path('delete-todo/<int:pk>/', views.delete_todo, name='delete_todo'),
+    path('undo-delete/<int:pk>/', views.undo_delete, name='undo_delete'),
     path('toggle-all/', views.toggle_all, name='toggle_all'),
     path('clear-completed/', views.clear_completed, name='clear_completed'),
     path('edit-todo/<int:pk>/', views.edit_todo, name='edit_todo'),

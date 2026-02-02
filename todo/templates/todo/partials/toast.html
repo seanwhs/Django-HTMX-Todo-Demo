@@ -2,23 +2,26 @@
 <div hx-swap-oob="beforeend:#toast-container">
     {% with toast_id=now|date:"Uu" %}
     <div id="toast-{{ toast_id }}" 
-         style="--toast-id: {{ toast_id }};"
-         class="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-white/10 animate-[bounce_0.5s_ease-in-out]">
+         class="toast-item bg-gray-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center justify-between border border-white/10 mb-2 pointer-events-auto transition-all">
         
-        <span class="text-cyan-400">✨</span>
-        <span class="text-sm font-medium">{{ message }}</span>
-        
-        <style>
-            /* We use a generic attribute selector so VS Code doesn't see the template tags */
-            [id^="toast-"] {
-                animation: bounce 0.5s ease-in-out, fadeOut 3s forwards;
-            }
+        <div class="flex items-center space-x-3">
+            <span class="text-cyan-400 font-bold">✨</span>
+            <span class="text-sm font-medium">{{ message }}</span>
+        </div>
 
-            @keyframes fadeOut {
-                0% { opacity: 1; transform: translateY(0); }
-                80% { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(20px); }
-            }
+        {% if todo_id %}
+        <button hx-post="{% url 'undo_delete' todo_id %}" 
+                hx-target="closest .toast-item" 
+                hx-swap="delete"
+                class="ml-4 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-md text-xs font-black uppercase text-cyan-400 transition-colors cursor-pointer">
+            Undo
+        </button>
+        {% endif %}
+
+        <style>
+            @keyframes toastFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes toastFadeOut { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+            #toast-{{ toast_id }} { animation: toastFadeIn 0.3s ease-out, toastFadeOut 5s forwards; }
         </style>
     </div>
     {% endwith %}

@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from .models import Todo
 
 def get_todo_context(filter_type='all'):
-    todos = Todo.objects.all()
+    todos = Todo.objects.filter(is_deleted=False) 
     if filter_type == 'active':
         todos = todos.filter(is_done=False)
     elif filter_type == 'completed':
@@ -14,7 +14,7 @@ def get_todo_context(filter_type='all'):
     
     return {
         "todos": todos,
-        "count": Todo.objects.filter(is_done=False).count(),
+        "count": Todo.objects.filter(is_deleted=False, is_done=False).count(),
         "filter_type": filter_type
     }
 
@@ -29,34 +29,57 @@ def add_todo(request):
     if not title: return HttpResponse(status=204)
     
     todo = Todo.objects.create(title=title)
-    context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
+    context = {"todo": todo, "count": Todo.objects.filter(is_deleted=False, is_done=False).count(), "update_count": True}
     
     todo_html = render_to_string("todo/partials/todo.html", context, request=request)
-    toast_html = render_to_string("todo/partials/toast.html", {"message": "Task added!"})
+    toast_html = render_to_string("todo/partials/toast.html", {"message": "Task added!"}, request=request)
     return HttpResponse(todo_html + toast_html)
 
 @require_http_methods(["PUT", "POST"])
 def update_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
-    
     if request.method == "POST" and "title" in request.POST:
         todo.title = request.POST.get("title")
     else:
         todo.is_done = not todo.is_done
-    
     todo.save()
-    context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
+    
+    context = {"todo": todo, "count": Todo.objects.filter(is_deleted=False, is_done=False).count(), "update_count": True}
     return render(request, "todo/partials/todo.html", context)
 
 @require_http_methods(["DELETE"])
 def delete_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
-    todo.delete()
+    todo.is_deleted = True 
+    todo.save()
     
-    count = Todo.objects.filter(is_done=False).count()
-    counter_html = render_to_string("todo/partials/counter.html", {"count": count})
-    toast_html = render_to_string("todo/partials/toast.html", {"message": "Task deleted"})
-    return HttpResponse(counter_html + toast_html)
+    count = Todo.objects.filter(is_deleted=False, is_done=False).count()
+    counter_html = render_to_string("todo/partials/counter.html", {"count": count}, request=request)
+    toast_html = render_to_string("todo/partials/toast.html", {
+        "message": "Task deleted",
+        "todo_id": todo.pk
+    }, request=request)
+    
+    # Return empty string to remove the row, plus OOB updates for counter and toast
+    return HttpResponse("" + counter_html + toast_html)
+
+@require_http_methods(["POST"])
+def undo_delete(request, pk):
+    todo = get_object_or_404(Todo, pk=pk)
+    todo.is_deleted = False
+    todo.save()
+    
+    context = {
+        "todo": todo, 
+        "count": Todo.objects.filter(is_deleted=False, is_done=False).count(),
+        "update_count": True
+    }
+    todo_html = render_to_string("todo/partials/todo.html", context, request=request)
+    
+    response = HttpResponse(todo_html)
+    response['HX-Retarget'] = '#todos'
+    response['HX-Reswap'] = 'afterbegin'
+    return response
 
 @require_http_methods(["POST"])
 def toggle_all(request):
