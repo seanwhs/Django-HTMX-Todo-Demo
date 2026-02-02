@@ -15,4 +15,5 @@ urlpatterns = [
     path('edit-todo/<int:pk>/', views.edit_todo, name='edit_todo'),
     path('clear-completed/', views.clear_completed, name='clear_completed'),
     path('undo-clear/<str:batch_id>/', views.undo_clear, name='undo_clear'),
+    path('delete-permanent/<int:pk>/', views.delete_permanent, name='delete_permanent'),
 ]

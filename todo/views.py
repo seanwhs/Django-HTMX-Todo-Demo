@@ -9,9 +9,12 @@ from .models import Todo
 
 
 def get_todo_context(filter_type="all", query=""):
-    todos = Todo.objects.filter(is_deleted=False)
+    # If filter is 'deleted', show ONLY soft-deleted items. Otherwise, show non-deleted.
+    if filter_type == "deleted":
+        todos = Todo.objects.filter(is_deleted=True)
+    else:
+        todos = Todo.objects.filter(is_deleted=False)
 
-    # Apply search filter if query exists
     if query:
         todos = todos.filter(title__icontains=query)
 
@@ -130,23 +133,46 @@ def delete_todo(request, pk):
     return HttpResponse("" + counter_html + toast_html)
 
 
+# todo/views.py
+
+
 @require_http_methods(["POST"])
 def undo_delete(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
     todo.is_deleted = False
     todo.save()
 
-    context = {
-        "todo": todo,
-        "count": Todo.objects.filter(is_deleted=False, is_done=False).count(),
-        "update_count": True,
-    }
-    todo_html = render_to_string("todo/partials/todo.html", context, request=request)
+    count = Todo.objects.filter(is_deleted=False, is_done=False).count()
 
-    response = HttpResponse(todo_html)
-    response["HX-Retarget"] = "#todos"
-    response["HX-Reswap"] = "afterbegin"
-    return response
+    # 1. The restored row (to be added to the list)
+    todo_html = render_to_string(
+        "todo/partials/todo.html", {"todo": todo}, request=request
+    )
+
+    # 2. The counter update
+    counter_html = render_to_string(
+        "todo/partials/counter.html", {"count": count}, request=request
+    )
+
+    # 3. This is the magic: An OOB swap that deletes the "deleted version"
+    # of the row from the current view immediately.
+    remove_old_row = f'<article id="todo-{pk}" hx-swap-oob="delete"></article>'
+
+    # Combine everything
+    return HttpResponse(todo_html + counter_html + remove_old_row)
+
+
+@require_http_methods(["DELETE"])
+def delete_permanent(request, pk):
+    todo = get_object_or_404(Todo, pk=pk)
+    todo.delete()  # Actually removes from DB
+
+    toast_html = render_to_string(
+        "todo/partials/toast.html",
+        {"message": "Task permanently removed"},
+        request=request,
+    )
+    return HttpResponse("" + toast_html)
 
 
 @require_http_methods(["POST"])
@@ -174,7 +200,7 @@ def toggle_all(request):
 def clear_completed(request):
     completed_todos = Todo.objects.filter(is_done=True, is_deleted=False)
 
-    # Change this: instead of 204, just let it process normally 
+    # Change this: instead of 204, just let it process normally
     # so list.html can render the "No tasks found" message.
     if completed_todos.exists():
         batch_id = f"batch_{int(time.time())}"
@@ -187,34 +213,40 @@ def clear_completed(request):
     context = get_todo_context("all", query)
 
     list_html = render_to_string("todo/partials/list.html", context, request=request)
-    counter_html = render_to_string("todo/partials/counter.html", {"count": context["count"]}, request=request)
-    
+    counter_html = render_to_string(
+        "todo/partials/counter.html", {"count": context["count"]}, request=request
+    )
+
     response_html = list_html + counter_html
-    
+
     if batch_id:
-        toast_html = render_to_string("todo/partials/toast.html", 
-            {"message": "Cleared completed tasks", "undo_batch_id": batch_id}, request=request)
+        toast_html = render_to_string(
+            "todo/partials/toast.html",
+            {"message": "Cleared completed tasks", "undo_batch_id": batch_id},
+            request=request,
+        )
         response_html += toast_html
 
     return HttpResponse(response_html)
 
+
 @require_http_methods(["POST"])
 def undo_clear(request, batch_id):
-    # 1. Restore the items belonging to this batch
     Todo.objects.filter(note=batch_id).update(is_deleted=False, note="")
-    
-    # 2. Extract the search query sent via hx-include
     query = request.POST.get("q", "")
-    
-    # 3. Get context (we default to 'all' to show the restored items)
     context = get_todo_context("all", query)
-    
-    # 4. Render and return the partials
-    list_html = render_to_string("todo/partials/list.html", context, request=request)
-    counter_html = render_to_string("todo/partials/counter.html", {"count": context["count"]}, request=request)
-    
-    return HttpResponse(list_html + counter_html)
 
+    list_html = render_to_string("todo/partials/list.html", context, request=request)
+    counter_html = render_to_string(
+        "todo/partials/counter.html", {"count": context["count"]}, request=request
+    )
+
+    # Optional: You could send back a fresh toast saying "Tasks restored!"
+    success_toast = render_to_string(
+        "todo/partials/toast.html", {"message": "Tasks restored!"}, request=request
+    )
+
+    return HttpResponse(list_html + counter_html + success_toast)
 
 @require_http_methods(["GET"])
 def edit_todo(request, pk):

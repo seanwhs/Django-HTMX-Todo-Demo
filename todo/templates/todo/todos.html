@@ -89,13 +89,16 @@
                 </button>
 
                 <div class="flex space-x-1">
-                    <button hx-get="{% url 'todos' %}" hx-target="#todos"
-                        class="px-3 py-1 text-[10px] font-bold rounded-md {% if not filter_type or filter_type == 'all' %}bg-cyan-600 text-white{% else %}text-gray-400 hover:bg-gray-200{% endif %}">ALL</button>
-                    <button hx-get="{% url 'filter_todos' 'active' %}" hx-target="#todos"
-                        class="px-3 py-1 text-[10px] font-bold rounded-md {% if filter_type == 'active' %}bg-cyan-600 text-white{% else %}text-gray-400 hover:bg-gray-200{% endif %}">ACTIVE</button>
+                    <button hx-get="{% url 'todos' %}" hx-target="#todos" class="...">ALL</button>
+                    <button hx-get="{% url 'filter_todos' 'active' %}" hx-target="#todos" class="...">ACTIVE</button>
                     <button hx-get="{% url 'filter_todos' 'completed' %}" hx-target="#todos"
-                        class="px-3 py-1 text-[10px] font-bold rounded-md {% if filter_type == 'completed' %}bg-cyan-600 text-white{% else %}text-gray-400 hover:bg-gray-200{% endif %}">COMPLETED</button>
+                        class="...">COMPLETED</button>
+                    <button hx-get="{% url 'filter_todos' 'deleted' %}" hx-target="#todos"
+                        class="px-3 py-1 text-[10px] font-bold rounded-md {% if filter_type == 'deleted' %}bg-red-600 text-white{% else %}text-gray-400 hover:bg-gray-200{% endif %}">
+                        TRASH
+                    </button>
                 </div>
+
             </div>
 
 
