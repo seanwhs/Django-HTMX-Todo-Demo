@@ -12,8 +12,5 @@ urlpatterns = [
     path('delete-todo/<int:pk>/', views.delete_todo, name='delete_todo'),
     path('toggle-all/', views.toggle_all, name='toggle_all'),
     path('clear-completed/', views.clear_completed, name='clear_completed'),
-<<<<<<< HEAD
     path('edit-todo/<int:pk>/', views.edit_todo, name='edit_todo'),
-=======
->>>>>>> c83c870c047efd2aea2cd4695e1b2329aee8ff58
 ]

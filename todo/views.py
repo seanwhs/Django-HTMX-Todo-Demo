@@ -31,39 +31,37 @@ def add_todo(request):
     context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
     return render(request, "todo/partials/todo.html", context)
 
-<<<<<<< HEAD
 @require_http_methods(["GET"])
 def edit_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
     return render(request, "todo/partials/todo_edit.html", {"todo": todo})
 
-@require_http_methods(["PUT", "POST"]) # Add POST support for the form
 def update_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
     
-    # If it's a POST/PUT from the edit form, update the title
-    if "title" in request.POST:
+    # Handle Title Update (from edit form)
+    if request.method == "POST" and "title" in request.POST:
         todo.title = request.POST.get("title")
-    else:
-        # Otherwise, it was the checkbox/toggle click
+        todo.save()
+    # Handle Toggle (from clicking the task)
+    elif request.method == "PUT":
         todo.is_done = not todo.is_done
-        
-=======
-@require_http_methods(["PUT"])
-def update_todo(request, pk):
-    todo = get_object_or_404(Todo, pk=pk)
-    todo.is_done = not todo.is_done
->>>>>>> c83c870c047efd2aea2cd4695e1b2329aee8ff58
-    todo.save()
+        todo.save()
     
-    context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
+    context = {
+        "todo": todo, 
+        "count": Todo.objects.filter(is_done=False).count(), 
+        "update_count": True
+    }
     return render(request, "todo/partials/todo.html", context)
 
 @require_http_methods(["DELETE"])
 def delete_todo(request, pk):
     get_object_or_404(Todo, pk=pk).delete()
+    # When deleting, we need to return the counter OOB AND nothing for the row
     count = Todo.objects.filter(is_done=False).count()
-    return render(request, "todo/partials/counter.html", {"count": count})
+    response = render(request, "todo/partials/counter.html", {"count": count})
+    return response        
 
 @require_http_methods(["POST"])
 def toggle_all(request):
