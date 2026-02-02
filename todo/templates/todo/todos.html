@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
         .htmx-swapping { opacity: 0; transition: opacity 0.3s ease-out; }
-        /* Simple logic to hide the 'No tasks' message if the todos section has content */
         #todos:not(:empty) + #no-todos-msg { display: none; }
     </style>
 </head>
@@ -22,7 +21,6 @@
     </nav>
 
     <main class="w-full max-w-4xl mx-auto my-8 px-4 lg:px-10 py-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl">
-        
         <form hx-post="{% url 'add_todo' %}" 
               hx-target="#todos" 
               hx-swap="afterbegin" 
@@ -37,52 +35,42 @@
         </form>
 
         <div class="flex flex-col sm:flex-row items-center justify-between mb-6 px-2 gap-4">
-            <button hx-post="{% url 'toggle_all' %}" 
-                    hx-target="#todos" 
-                    hx-swap="outerHTML"
+            <button hx-post="{% url 'toggle_all' %}" hx-target="#todos" hx-swap="outerHTML"
                     class="group text-gray-500 hover:text-cyan-600 flex items-center text-sm font-semibold transition-colors">
-                <span class="mr-2 opacity-50 group-hover:opacity-100">✔️</span> 
-                Mark all as done
+                <span class="mr-2 opacity-50 group-hover:opacity-100">✔️</span> Mark all as done
             </button>
-            
             <div class="flex bg-gray-200/50 p-1 rounded-xl space-x-1">
-                <button hx-get="{% url 'todos' %}" hx-target="#todos"
-                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'all' or not filter_type %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
-                    All
-                </button>
-                
-                <button hx-get="{% url 'filter_todos' 'active' %}" hx-target="#todos"
-                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'active' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
-                    Active
-                </button>
-                
-                <button hx-get="{% url 'filter_todos' 'completed' %}" hx-target="#todos"
-                        class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'completed' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
-                    Completed
-                </button>
+                <button hx-get="{% url 'todos' %}" hx-target="#todos" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if not filter_type or filter_type == 'all' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 {% endif %}">All</button>
+                <button hx-get="{% url 'filter_todos' 'active' %}" hx-target="#todos" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'active' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 {% endif %}">Active</button>
+                <button hx-get="{% url 'filter_todos' 'completed' %}" hx-target="#todos" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all {% if filter_type == 'completed' %} bg-white text-cyan-600 shadow-sm {% else %} text-gray-500 {% endif %}">Completed</button>
             </div>
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {% include "todo/partials/list.html" %}
-
             <footer class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center text-sm">
                 {% include "todo/partials/counter.html" %}
-
-                <button hx-post="{% url 'clear_completed' %}" 
-                        hx-target="#todos" 
-                        hx-swap="outerHTML"
-                        hx-confirm="Clear all finished tasks?"
-                        class="text-gray-400 hover:text-red-500 transition-colors font-bold uppercase tracking-wider text-[10px]">
-                    Clear Completed
-                </button>
+                <button hx-post="{% url 'clear_completed' %}" hx-target="#todos" hx-swap="outerHTML" hx-confirm="Clear all finished tasks?"
+                        class="text-gray-400 hover:text-red-500 transition-colors font-bold uppercase text-[10px]">Clear Completed</button>
             </footer>
         </div>
     </main>
 
+    <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col-reverse gap-2 z-50"></div>
+
     <script>
         document.body.addEventListener('htmx:configRequest', (e) => {
             e.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+
+        // Remove toast elements from DOM after they fade out
+        document.addEventListener('htmx:afterOnLoad', (e) => {
+            if (e.detail.xhr.responseText.includes('hx-swap-oob="beforeend:#toast-container"')) {
+                setTimeout(() => {
+                    const container = document.getElementById('toast-container');
+                    if (container.lastElementChild) container.removeChild(container.lastElementChild);
+                }, 3500);
+            }
         });
     </script>
 </body>

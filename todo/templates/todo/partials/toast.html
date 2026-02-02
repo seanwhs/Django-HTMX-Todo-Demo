@@ -1,0 +1,25 @@
+<!-- todo/templates/todo/partials/toast.html -->
+<div hx-swap-oob="beforeend:#toast-container">
+    {% with toast_id=now|date:"Uu" %}
+    <div id="toast-{{ toast_id }}" 
+         style="--toast-id: {{ toast_id }};"
+         class="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-white/10 animate-[bounce_0.5s_ease-in-out]">
+        
+        <span class="text-cyan-400">✨</span>
+        <span class="text-sm font-medium">{{ message }}</span>
+        
+        <style>
+            /* We use a generic attribute selector so VS Code doesn't see the template tags */
+            [id^="toast-"] {
+                animation: bounce 0.5s ease-in-out, fadeOut 3s forwards;
+            }
+
+            @keyframes fadeOut {
+                0% { opacity: 1; transform: translateY(0); }
+                80% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(20px); }
+            }
+        </style>
+    </div>
+    {% endwith %}
+</div>

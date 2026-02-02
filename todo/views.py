@@ -1,7 +1,8 @@
-# todo/views.py 
+# todo/views.py
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from .models import Todo
 
 def get_todo_context(filter_type='all'):
@@ -29,47 +30,49 @@ def add_todo(request):
     
     todo = Todo.objects.create(title=title)
     context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
-    return render(request, "todo/partials/todo.html", context)
+    
+    todo_html = render_to_string("todo/partials/todo.html", context, request=request)
+    toast_html = render_to_string("todo/partials/toast.html", {"message": "Task added!"})
+    return HttpResponse(todo_html + toast_html)
 
-@require_http_methods(["GET"])
-def edit_todo(request, pk):
-    todo = get_object_or_404(Todo, pk=pk)
-    return render(request, "todo/partials/todo_edit.html", {"todo": todo})
-
+@require_http_methods(["PUT", "POST"])
 def update_todo(request, pk):
     todo = get_object_or_404(Todo, pk=pk)
     
-    # Handle Title Update (from edit form)
     if request.method == "POST" and "title" in request.POST:
         todo.title = request.POST.get("title")
-        todo.save()
-    # Handle Toggle (from clicking the task)
-    elif request.method == "PUT":
+    else:
         todo.is_done = not todo.is_done
-        todo.save()
     
-    context = {
-        "todo": todo, 
-        "count": Todo.objects.filter(is_done=False).count(), 
-        "update_count": True
-    }
+    todo.save()
+    context = {"todo": todo, "count": Todo.objects.filter(is_done=False).count(), "update_count": True}
     return render(request, "todo/partials/todo.html", context)
 
 @require_http_methods(["DELETE"])
 def delete_todo(request, pk):
-    get_object_or_404(Todo, pk=pk).delete()
-    # When deleting, we need to return the counter OOB AND nothing for the row
+    todo = get_object_or_404(Todo, pk=pk)
+    todo.delete()
+    
     count = Todo.objects.filter(is_done=False).count()
-    response = render(request, "todo/partials/counter.html", {"count": count})
-    return response        
+    counter_html = render_to_string("todo/partials/counter.html", {"count": count})
+    toast_html = render_to_string("todo/partials/toast.html", {"message": "Task deleted"})
+    return HttpResponse(counter_html + toast_html)
 
 @require_http_methods(["POST"])
 def toggle_all(request):
     active_exists = Todo.objects.filter(is_done=False).exists()
     Todo.objects.all().update(is_done=active_exists)
-    return todos(request) # Re-render the list partial
+    return todos(request)
 
 @require_http_methods(["POST"])
 def clear_completed(request):
-    Todo.objects.filter(is_done=True).delete()
-    return todos(request)
+    deleted_count, _ = Todo.objects.filter(is_done=True).delete()
+    context = get_todo_context()
+    list_html = render_to_string("todo/partials/list.html", context, request=request)
+    toast_html = render_to_string("todo/partials/toast.html", {"message": f"Cleared {deleted_count} tasks"})
+    return HttpResponse(list_html + toast_html)
+
+@require_http_methods(["GET"])
+def edit_todo(request, pk):
+    todo = get_object_or_404(Todo, pk=pk)
+    return render(request, "todo/partials/todo_edit.html", {"todo": todo})
