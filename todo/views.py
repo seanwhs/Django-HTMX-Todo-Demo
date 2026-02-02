@@ -1,8 +1,10 @@
 # todo/views.py
+import time
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.db import transaction
 from .models import Todo
 
 def get_todo_context(filter_type='all'):
@@ -44,8 +46,17 @@ def update_todo(request, pk):
         todo.is_done = not todo.is_done
     todo.save()
     
-    context = {"todo": todo, "count": Todo.objects.filter(is_deleted=False, is_done=False).count(), "update_count": True}
-    return render(request, "todo/partials/todo.html", context)
+    # Get fresh count for the footer
+    count = Todo.objects.filter(is_deleted=False, is_done=False).count()
+    
+    # Render the todo row (context doesn't need update_count anymore)
+    todo_html = render_to_string("todo/partials/todo.html", {"todo": todo}, request=request)
+    
+    # Render the counter (this has hx-swap-oob="true" inside it)
+    counter_html = render_to_string("todo/partials/counter.html", {"count": count}, request=request)
+    
+    # Return both combined. HTMX swaps the row and then scans for the OOB ID to update the footer.
+    return HttpResponse(todo_html + counter_html)
 
 @require_http_methods(["DELETE"])
 def delete_todo(request, pk):
@@ -83,17 +94,64 @@ def undo_delete(request, pk):
 
 @require_http_methods(["POST"])
 def toggle_all(request):
-    active_exists = Todo.objects.filter(is_done=False).exists()
-    Todo.objects.all().update(is_done=active_exists)
-    return todos(request)
+    # Determine if we are marking all as done or all as active
+    active_exists = Todo.objects.filter(is_deleted=False, is_done=False).exists()
+    Todo.objects.filter(is_deleted=False).update(is_done=active_exists)
+    
+    # Get fresh data
+    context = get_todo_context('all')
+    
+    # 1. Render the rows for the #todos container
+    list_html = render_to_string("todo/partials/list.html", context, request=request)
+    
+    # 2. Render the counter (which has hx-swap-oob="true" inside it)
+    counter_html = render_to_string("todo/partials/counter.html", {"count": context['count']}, request=request)
+    
+    # Return both together
+    return HttpResponse(list_html + counter_html)
 
 @require_http_methods(["POST"])
 def clear_completed(request):
-    deleted_count, _ = Todo.objects.filter(is_done=True).delete()
-    context = get_todo_context()
+    # Find all completed tasks that aren't already soft-deleted
+    completed_todos = Todo.objects.filter(is_done=True, is_deleted=False)
+    
+    if not completed_todos.exists():
+        return HttpResponse(status=204)
+
+    # Tag this specific group with a batch timestamp
+    batch_id = f"batch_{int(time.time())}"
+    
+    # Use transaction.atomic if you want to be extra safe
+    with transaction.atomic():
+        completed_todos.update(is_deleted=True, note=batch_id)
+    
+    # Refresh data for the UI components
+    context = get_todo_context('all')
+    
+    # 1. The main list (replaces current #todos innerHTML)
     list_html = render_to_string("todo/partials/list.html", context, request=request)
-    toast_html = render_to_string("todo/partials/toast.html", {"message": f"Cleared {deleted_count} tasks"})
-    return HttpResponse(list_html + toast_html)
+    
+    # 2. The counter (OOB swap)
+    counter_html = render_to_string("todo/partials/counter.html", {"count": context['count']}, request=request)
+    
+    # 3. The Bulk Toast (OOB swap)
+    toast_html = render_to_string("todo/partials/toast.html", {
+        "message": "Cleared completed tasks",
+        "undo_batch_id": batch_id
+    }, request=request)
+    
+    # Combine everything in one response
+    return HttpResponse(list_html + counter_html + toast_html)
+
+@require_http_methods(["POST"])
+def undo_clear(request, batch_id):
+    Todo.objects.filter(note=batch_id).update(is_deleted=False, note="")
+    # Re-using the main todos view works because it includes the counter context
+    return todos(request)
+    # 1. Update DB
+    Todo.objects.filter(note=batch_id).update(is_deleted=False, note="")
+    # 2. Return todos(request)
+    return todos(request)
 
 @require_http_methods(["GET"])
 def edit_todo(request, pk):

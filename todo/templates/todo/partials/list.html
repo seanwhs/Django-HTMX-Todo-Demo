@@ -1,11 +1,9 @@
 <!-- todo/templates/todo/partials/list.html -->
 
-<section id="todos" class="divide-y divide-gray-100">
-    {% for todo in todos %}
-        {% include "todo/partials/todo.html" %}
-    {% empty %}
-        <div class="px-6 py-12 text-center text-gray-400" id="no-todos-msg">
-            <p class="text-xl">📝 No tasks found!</p>
-        </div>
-    {% endfor %}
-</section>
+{% for todo in todos %}
+    {% include "todo/partials/todo.html" %}
+{% empty %}
+    <div class="px-6 py-12 text-center text-gray-400" id="no-todos-msg">
+        <p class="text-xl">📝 No tasks found!</p>
+    </div>
+{% endfor %}

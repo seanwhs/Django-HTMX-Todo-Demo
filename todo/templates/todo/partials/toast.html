@@ -2,7 +2,8 @@
 <div hx-swap-oob="beforeend:#toast-container">
     {% with toast_id=now|date:"Uu" %}
     <div id="toast-{{ toast_id }}" 
-         class="toast-item bg-gray-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center justify-between border border-white/10 mb-2 pointer-events-auto transition-all">
+         class="toast-item bg-gray-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center justify-between border border-white/10 mb-2 pointer-events-auto relative z-50"
+         style="animation: toastFadeIn 0.3s ease-out, toastFadeOut 5s forwards;">
         
         <div class="flex items-center space-x-3">
             <span class="text-cyan-400 font-bold">✨</span>
@@ -10,19 +11,20 @@
         </div>
 
         {% if todo_id %}
-        <button hx-post="{% url 'undo_delete' todo_id %}" 
-                hx-target="closest .toast-item" 
-                hx-swap="delete"
-                class="ml-4 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-md text-xs font-black uppercase text-cyan-400 transition-colors cursor-pointer">
-            Undo
-        </button>
+            <button hx-post="{% url 'undo_delete' todo_id %}" 
+                    hx-target="closest .toast-item" hx-swap="delete"
+                    class="ml-4 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-md text-xs font-black uppercase text-cyan-400 cursor-pointer">
+                Undo
+            </button>
+        {% elif undo_batch_id %}
+            <button hx-post="{% url 'undo_clear' undo_batch_id %}" 
+                    hx-target="#todos" 
+                    hx-swap="innerHTML"
+                    hx-on::after-request="document.getElementById('toast-{{ toast_id }}').remove()"
+                    class="ml-4 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 rounded-md text-xs font-black uppercase text-cyan-400 cursor-pointer">
+                Undo Clear
+            </button>
         {% endif %}
-
-        <style>
-            @keyframes toastFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes toastFadeOut { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
-            #toast-{{ toast_id }} { animation: toastFadeIn 0.3s ease-out, toastFadeOut 5s forwards; }
-        </style>
     </div>
     {% endwith %}
 </div>

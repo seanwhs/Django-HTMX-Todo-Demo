@@ -1,9 +1,5 @@
 <!-- todo/templates/todo/partials/todo.html -->
 
-{% if update_count %}
-    {% include "todo/partials/counter.html" %}
-{% endif %}
-
 <article class="flex items-center justify-between bg-white hover:bg-gray-50 transition-all group" id="todo-{{ todo.id }}">
     <div class="flex-1 py-4 cursor-pointer" 
          hx-put="{% url 'update_todo' todo.id %}" 
